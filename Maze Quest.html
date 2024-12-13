@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Styles */
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            padding: 0;
+            margin: 0;
+            background-color: #000;
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        #gameCanvas {
+            border: solid 2px #fff;
+            display: block;
+            background-color: #1e1e1e;
+        }
+
+        .icon {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+        }
+
+        #gameMessage {
+            color: white;
+            font-size: 24px;
+            display: none;
+            text-align: center;
+        }
+
+        #startButton {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 32px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        #startButton:hover {
+            background-color: #45a049;
+        }
+
+        #title {
+            color: white;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        #subtitle {
+            color: white;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        /* Modal for selecting player icon */
+        #iconModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            font-size: 18px;
+            z-index: 1000;
+        }
+
+        #iconModal button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #iconModal button:hover {
+            background-color: #45a049;
+        }
+
+        /* Extra small devices (phones, 600px and down) */
+        @media only screen and (max-width: 400px) {
+            #gameCanvas {
+                width: 300px;
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="title">Maze Quest</div>
+    <div id="subtitle">Move the moon through the maze to reach the sun</div>
+    <button id="startButton">Start Game</button>
+    <div id="gameMessage">You Won!</div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <!-- Modal for Icon Selection -->
+    <div id="iconModal">
+        <h2>Select your icon</h2>
+        <div>
+            <input type="radio" id="moon" name="icon" value="moon" checked>
+            <label for="moon">Moon 🌙</label>
+        </div>
+        <div>
+            <input type="radio" id="star" name="icon" value="star">
+            <label for="star">Star ⭐</label>
+        </div>
+        <div>
+            <input type="radio" id="planet" name="icon" value="planet">
+            <label for="planet">Earth 🌍</label>
+        </div>
+        <button id="selectIconButton">Start Game with Selected Icon</button>
+    </div>
+
+    <script>
+        // JavaScript for Maze Game with Icons (Moon, Sun, Star, Planet)
+
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const mazeWidth = 20;
+        const mazeHeight = 20;
+        const tileSize = 20;
+
+        let player = { x: 0, y: 0, icon: '🌙' };  // Default player icon: Moon
+        let goal = { x: mazeWidth - 2, y: mazeHeight - 4, icon: '☀️' };  // Goal icon: Sun
+        let maze = [];
+
+        const icons = {
+            moon: '🌙',
+            sun: '☀️',
+            star: '⭐',
+            planet: '🌍'
+        };
+
+        // Generate a random maze
+        function generateMaze() {
+            maze = [];
+            const wallProbability = 0.2;  // Wall density
+            for (let i = 0; i < mazeWidth; i++) {
+                maze[i] = [];
+                for (let j = 0; j < mazeHeight; j++) {
+                    maze[i][j] = Math.random() < wallProbability ? 1 : 0; // 1 is wall, 0 is path
+                }
+            }
+
+            // Ensure there's a path from start to goal (no blocked paths)
+            maze[0][0] = 0; // Start position
+            maze[mazeWidth - 1][mazeHeight - 1] = 0; // Goal position
+
+            // Make sure the first row and column are open for the player to move
+            for (let i = 0; i < mazeWidth; i++) {
+                maze[i][0] = 0;
+                maze[i][mazeHeight - 1] = 0;
+            }
+            for (let j = 0; j < mazeHeight; j++) {
+                maze[0][j] = 0;
+                maze[mazeWidth - 1][j] = 0;
+            }
+        }
+
+        // Draw maze and icons
+        function drawMaze() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            for (let i = 0; i < mazeWidth; i++) {
+                for (let j = 0; j < mazeHeight; j++) {
+                    ctx.fillStyle = maze[i][j] === 1 ? '#FF6347' : '#333';  // Wall color: Tomato red
+                    ctx.fillRect(i * tileSize, j * tileSize, tileSize, tileSize);
+                    ctx.strokeStyle = '#000';
+                    ctx.strokeRect(i * tileSize, j * tileSize, tileSize, tileSize);
+                }
+            }
+
+            // Draw player and goal icons
+            ctx.font = '24px sans-serif';
+            ctx.fillText(player.icon, player.x * tileSize + 5, player.y * tileSize + 20);
+            ctx.fillText(goal.icon, goal.x * tileSize + 5, goal.y * tileSize + 20);
+        }
+
+        // Move the player based on key press
+        function movePlayer(e) {
+            if (e.key === 'ArrowUp' && player.y > 0 && maze[player.x][player.y - 1] === 0) {
+                player.y--;
+            }
+            if (e.key === 'ArrowDown' && player.y < mazeHeight - 1 && maze[player.x][player.y + 1] === 0) {
+                player.y++;
+            }
+            if (e.key === 'ArrowLeft' && player.x > 0 && maze[player.x - 1][player.y] === 0) {
+                player.x--;
+            }
+            if (e.key === 'ArrowRight' && player.x < mazeWidth - 1 && maze[player.x + 1][player.y] === 0) {
+                player.x++;
+            }
+
+            // Check if player reaches the goal
+            if (player.x === goal.x && player.y === goal.y) {
+                document.getElementById('gameMessage').innerText = 'You Won!';
+                document.getElementById('gameMessage').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('gameMessage').style.display = 'none';
+                    generateMaze(); // Generate new maze for the never-ending game
+                    player.x = 0; // Reset player position to top left
+                    player.y = 0; // Reset player position to top left
+                    drawMaze();
+                }, 2000);
+            }
+
+            drawMaze();
+        }
+
+        // Start the game and initialize the maze
+        function startGame() {
+            player.x = 0;
+            player.y = 0;
+            goal.x = mazeWidth - 2; // Adjusted position for the goal
+            goal.y = mazeHeight - 4; // Adjusted position for the goal
+            generateMaze();
+            drawMaze();
+            window.addEventListener('keydown', movePlayer);
+            document.getElementById('startButton').style.display = 'none';
+        }
+
+        // Select the icon based on the player's choice
+        function selectIconAndStart() {
+            const selectedIcon = document.querySelector('input[name="icon"]:checked').value;
+            player.icon = icons[selectedIcon];
+            document.getElementById('iconModal').style.display = 'none';
+            startGame();
+        }
+
+        // Display the modal for icon selection
+        document.getElementById('startButton').addEventListener('click', () => {
+            document.getElementById('iconModal').style.display = 'flex';
+        });
+
+        // Handle the selection of the icon and start the game
+        document.getElementById('selectIconButton').addEventListener('click', selectIconAndStart);
+    </script>
+</body>
+</html>
